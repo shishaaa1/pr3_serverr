@@ -36,12 +36,12 @@ namespace SnakeWPF.Pages
                 for (int iPoint = MainWindow.mainWindow.ViewModelGames.SnakesPlayers.Points.Count - 1; iPoint >= 0; --iPoint)
                 {
                     Snakes.Point SnakePoint = MainWindow.mainWindow.ViewModelGames.SnakesPlayers.Points[iPoint];
-                    if(iPoint != 0)
+                    if (iPoint != 0)
                     {
                         Snakes.Point NextSnakePoint = MainWindow.mainWindow.ViewModelGames.SnakesPlayers.Points[iPoint - 1];
-                        if(SnakePoint.X > NextSnakePoint.X || SnakePoint.X < NextSnakePoint.X)
+                        if (SnakePoint.X > NextSnakePoint.X || SnakePoint.X < NextSnakePoint.X)
                         {
-                            if(iPoint % 2 == 0)
+                            if (iPoint % 2 == 0)
                             {
                                 if (StepCadr % 2 == 0)
                                     SnakePoint.Y -= 1;
@@ -56,7 +56,7 @@ namespace SnakeWPF.Pages
                                     SnakePoint.Y -= 1;
                             }
                         }
-                        else if(SnakePoint.Y > NextSnakePoint.Y || SnakePoint.Y < NextSnakePoint.Y)
+                        else if (SnakePoint.Y > NextSnakePoint.Y || SnakePoint.Y < NextSnakePoint.Y)
                         {
                             if (iPoint % 2 == 0)
                             {
@@ -78,12 +78,12 @@ namespace SnakeWPF.Pages
                     if (iPoint == 0)
                         Color = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 127, 14));
                     else
-                        Color = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255,0,198,19));
+                        Color = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 198, 19));
                     Ellipse ellipse = new Ellipse()
                     {
-                        Width = 20, 
+                        Width = 20,
                         Height = 20,
-                        Margin = new Thickness(SnakePoint.X - 10,SnakePoint.Y - 10, 0, 0),
+                        Margin = new Thickness(SnakePoint.X - 10, SnakePoint.Y - 10, 0, 0),
                         Fill = Color,
                         Stroke = Brushes.Black,
                     };

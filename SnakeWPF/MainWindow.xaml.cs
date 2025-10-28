@@ -73,7 +73,7 @@ namespace SnakeWPF
                         });
                     }
                     ViewModelGames = JsonConvert.DeserializeObject<ViewModelGames>(returnData.ToString());
-                    if (ViewModelGames.SnakesPlayers.GameOVer)
+                    if (ViewModelGames.SnakesPlayers.GameOVer )
                     {
                         Dispatcher.Invoke(() =>
                         {

@@ -40,34 +40,65 @@ namespace pr3_serverr
             viewModelGamesPlayer.SnakesPlayers = new Snakes()
             {
                 Points = new List<Snakes.Point>()
-                {
-                    new Snakes.Point() {X=30,Y=10 },
-                    new Snakes.Point() {X=20,Y=10 },
-                    new Snakes.Point() {X=10,Y=10 },
-                },
+        {
+            new Snakes.Point() {X=30,Y=10 },
+            new Snakes.Point() {X=20,Y=10 },
+            new Snakes.Point() {X=10,Y=10 },
+        },
                 direction = Snakes.Direction.Start
             };
             viewModelGamesPlayer.Points = new Snakes.Point(new Random().Next(10, 783), new Random().Next(10, 410));
             viewModelGames.Add(viewModelGamesPlayer);
-            return viewModelGames.FindIndex(x => x == viewModelGamesPlayer);
+
+            int index = viewModelGames.Count - 1;
+            viewModelGames[index].IdSnake = index;
+            return index;
         }
         private static void Send()
         {
+            var gameState = new
+            {
+                Snakes = viewModelGames.Select(v => new
+                {
+                    Id = v.IdSnake,
+                    Points = v.SnakesPlayers.Points,
+                    Direction = v.SnakesPlayers.direction,
+                    GameOver = v.SnakesPlayers.GameOVer,
+                    Color = remoteIPAddress.Find(u => u.IdSnake == v.IdSnake)?.Color ?? "Red" 
+                }).ToList(),
+                Foods = viewModelGames.Select(v => new
+                {
+                    Id = v.IdSnake,
+                    Food = v.Points
+                }).ToList(),
+                Leaders = Leaders.Take(10).ToList() // топ-10 лидеров
+            };
+
+            string jsonGameState = JsonConvert.SerializeObject(gameState);
+
             foreach (ViewModelUserSettings User in remoteIPAddress)
-            { 
+            {
                 UdpClient sender = new UdpClient();
                 IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(User.IPAddress), int.Parse(User.Port));
                 try
                 {
-                    byte[] bytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(viewModelGames.Find(x => x.IdSnake == User.IdSnake)));
+                    // Добавляем ID игрока, чтобы клиент знал, какая змея — его
+                    var playerState = new
+                    {
+                        PlayerId = User.IdSnake,
+                        GameState = gameState
+                    };
+
+                    byte[] bytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(playerState));
                     sender.Send(bytes, bytes.Length, endPoint);
+
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"Отправил данные пользователю: {User.IPAddress}:{User.Port}");
+                    Console.WriteLine($"Отправил состояние игры пользователю: {User.IPAddress}:{User.Port} (ID: {User.IdSnake})");
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Возникло исключение: " + ex.ToString() + "\n " + ex.Message);
+                    Console.WriteLine("Ошибка отправки: " + ex.Message);
                 }
                 finally
                 {
@@ -92,10 +123,13 @@ namespace pr3_serverr
                     {
                         string[] dataMessage = returnData.ToString().Split('|');
                         ViewModelUserSettings viewModelUserSettings = JsonConvert.DeserializeObject<ViewModelUserSettings>(dataMessage[1]);
+
+                        if (string.IsNullOrEmpty(viewModelUserSettings.Color))
+                            viewModelUserSettings.Color = GetRandomColor();
+
                         remoteIPAddress.Add(viewModelUserSettings);
                         viewModelUserSettings.IdSnake = AddSnake();
                         viewModelGames[viewModelUserSettings.IdSnake].IdSnake = viewModelUserSettings.IdSnake;
-
                     }
                     else
                     {
@@ -164,11 +198,11 @@ namespace pr3_serverr
                         }
                         else if (Snake.direction == Snakes.Direction.Up)
                         {
-                            Snake.Points[i] = new Snakes.Point { X = Snake.Points[i].X, Y = Snake.Points[i].Y + Speed };
+                            Snake.Points[i] = new Snakes.Point { X = Snake.Points[i].X, Y = Snake.Points[i].Y - Speed }; 
                         }
                         else if (Snake.direction == Snakes.Direction.Left)
                         {
-                            Snake.Points[i] = new Snakes.Point { X = Snake.Points[i].X, Y = Snake.Points[i].Y + Speed };
+                            Snake.Points[i] = new Snakes.Point { X = Snake.Points[i].X - Speed, Y = Snake.Points[i].Y }; 
                         }
                     }
                 }
@@ -251,6 +285,11 @@ namespace pr3_serverr
                 else
                     Leaders = new List<Leaders>();
             }
+        }
+        private static string GetRandomColor()
+        {
+            var colors = new[] { "Red", "Green", "Blue", "Yellow", "Purple", "Orange", "Pink" };
+            return colors[new Random().Next(colors.Length)];
         }
     }
 }

@@ -88,7 +88,7 @@ namespace SnakeWPF
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("Возникло исключениее:" + ex.ToString() + "\n " + ex.Message);
+                Debug.WriteLine("Возникло исключение:" + ex.ToString() + "\n " + ex.Message);
             }
         }
         public static void Send(string datagram)
@@ -102,7 +102,7 @@ namespace SnakeWPF
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("Возникло исключениее:" + ex.ToString() + "\n " + ex.Message);
+                Debug.WriteLine("Возникло исключение:" + ex.ToString() + "\n " + ex.Message);
             }
         }
         private void EventKeyUp(object sender, KeyEventArgs e)

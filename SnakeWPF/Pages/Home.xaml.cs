@@ -42,7 +42,7 @@ namespace SnakeWPF.Pages
             int UserPort;
             if (!int.TryParse(port.Text, out UserPort))
             {
-                MessageBox.Show("Please use the port as a number");
+                MessageBox.Show("Please use the port as a numbers");
                 return;
             }
             MainWindow.mainWindow.StartReceiver();

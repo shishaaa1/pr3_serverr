@@ -22,7 +22,7 @@ namespace SnakeWPF
         public Common.ViewModelUserSettings ViewModelUserSettings = new Common.ViewModelUserSettings();
         public Common.ViewModelGames ViewModelGames = null;
         public static IPAddress remoteIPAddress = IPAddress.Parse("127.0.0.1");
-        public static int remotePort = 5001;
+        public static int remotePort = 6000;
         public Thread tRec;
         public UdpClient receivingUdpClient;
         public Pages.Home Home = new Pages.Home();
@@ -106,7 +106,7 @@ namespace SnakeWPF
             }
         }
         private void EventKeyUp(object sender, KeyEventArgs e)
-        {
+      {
             if (!string.IsNullOrEmpty(ViewModelUserSettings.IPAddress) &&
                 !string.IsNullOrEmpty(ViewModelUserSettings.Port) &&
                 (ViewModelGames != null && !ViewModelGames.SnakesPlayers.GameOVer))

@@ -17,7 +17,7 @@ namespace pr3_serverr
         public static List<Leaders> Leaders = new List<Leaders>();
         public static List<ViewModelUserSettings> remoteIPAddress = new List<ViewModelUserSettings>();
         public static List<ViewModelGames> viewModelGames = new List<ViewModelGames>();
-        private static int localPort = 5001;
+        private static int localPort = 6000;
         public static int MaxSpeed = 15;
         static void Main(string[] args)
         {
@@ -162,109 +162,93 @@ namespace pr3_serverr
         }
         public static void Timer()
         {
-            Thread.Sleep(100);
-            List<ViewModelGames> RemoteSnakes = viewModelGames.FindAll(x => x.SnakesPlayers.GameOVer);
-            if (RemoteSnakes.Count > 0)
+            while (true)
             {
-                foreach (ViewModelGames DeadSnake in RemoteSnakes)
+                try
                 {
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"Отключил пользователя;  {remoteIPAddress.Find(x => x.IdSnake == DeadSnake.IdSnake).IPAddress}" +
-                        $": {remoteIPAddress.Find(x => x.IdSnake == DeadSnake.IdSnake).Port};");
-                    remoteIPAddress.RemoveAll(x => x.IdSnake == DeadSnake.IdSnake);
-                }
-                viewModelGames.RemoveAll(x => x.SnakesPlayers.GameOVer);
-            }
-            foreach (ViewModelUserSettings User in remoteIPAddress)
-            {
-                Snakes Snake = viewModelGames.Find(x => x.IdSnake == User.IdSnake).SnakesPlayers;
-                for (int i = Snake.Points.Count - 1; i >= 0; i--)
-                {
-                    if (i != 0)
+                    Thread.Sleep(100); // ~10 FPS
+
+                    // Удаление мёртвых змей
+                    var deadSnakes = viewModelGames.Where(x => x.SnakesPlayers.GameOVer).ToList();
+                    foreach (var dead in deadSnakes)
                     {
-                        Snake.Points[i] = Snake.Points[i - 1];
+                        var user = remoteIPAddress.FirstOrDefault(u => u.IdSnake == dead.IdSnake);
+                        if (user != null)
+                        {
+                            Console.WriteLine($"Отключён игрок: {user.IPAddress}:{user.Port}");
+                            remoteIPAddress.Remove(user);
+                        }
+                        viewModelGames.Remove(dead);
                     }
-                    else
+
+                    foreach (var user in remoteIPAddress.ToList())
                     {
-                        int Speed = 10 + (int)Math.Round(Snake.Points.Count / 20f);
-                        if (Speed > MaxSpeed) Speed= MaxSpeed;
-                        if (Snake.direction == Snakes.Direction.Right)
+                        var snakeGame = viewModelGames.FirstOrDefault(g => g.IdSnake == user.IdSnake);
+                        if (snakeGame == null) continue;
+
+                        var snake = snakeGame.SnakesPlayers;
+                        if (snake.GameOVer) continue;
+
+                        for (int i = snake.Points.Count - 1; i >= 0; i--)
                         {
-                            Snake.Points[i] = new Snakes.Point() { X = Snake.Points[i].X + Speed, Y = Snake.Points[i].Y };
-                        }
-                        else if (Snake.direction == Snakes.Direction.Down)
-                        {
-                            Snake.Points[i] = new Snakes.Point() { X = Snake.Points[i].X, Y = Snake.Points[i].Y + Speed };
-                        }
-                        else if (Snake.direction == Snakes.Direction.Up)
-                        {
-                            Snake.Points[i] = new Snakes.Point { X = Snake.Points[i].X, Y = Snake.Points[i].Y - Speed }; 
-                        }
-                        else if (Snake.direction == Snakes.Direction.Left)
-                        {
-                            Snake.Points[i] = new Snakes.Point { X = Snake.Points[i].X - Speed, Y = Snake.Points[i].Y }; 
-                        }
-                    }
-                }
-                if (Snake.Points[0].X <= 0 || Snake.Points[0].X >= 793)
-                {
-                    Snake.GameOVer = true;
-                }
-                else if (Snake.Points[0].Y <= 0 || Snake.Points[0].Y >= 420)
-                {
-                    Snake.GameOVer = true;
-                }
-                if (Snake.direction != Snakes.Direction.Start)
-                {
-                    for (int i = 1; i < Snake.Points.Count; i++)
-                    {
-                        if (Snake.Points[0].X >= Snake.Points[i].X - 1 && Snake.Points[0].X <= Snake.Points[i].X + 1)
-                        {
-                            if (Snake.Points[0].Y >= Snake.Points[i].Y - 1 && Snake.Points[0].Y <= Snake.Points[i].Y + 1)
+                            if (i != 0)
                             {
-                                Snake.GameOVer = true;
-                                break;
+                                snake.Points[i] = snake.Points[i - 1];
+                            }
+                            else
+                            {
+                                int speed = Math.Min(10 + (int)Math.Round(snake.Points.Count / 20f), MaxSpeed);
+                                var currenthead = snake.Points[0];
+                                switch (snake.direction)
+                                {
+                                    case Snakes.Direction.Right: currenthead.X += speed; break;
+                                    case Snakes.Direction.Left: currenthead.X -= speed; break;
+                                    case Snakes.Direction.Down: currenthead.Y += speed; break;
+                                    case Snakes.Direction.Up: currenthead.Y -= speed; break;
+                                    case Snakes.Direction.Start: break;
+                                }
+                                snake.Points[0] = currenthead;
                             }
                         }
-                    }
-                }
-                if (Snake.Points[0].X >= viewModelGames.Find(x => x.IdSnake == User.IdSnake).Points.X - 15 && Snake.Points[0].X <= viewModelGames.Find(x => x.IdSnake == User.IdSnake).Points.X + 15)
-                {
-                    if (Snake.Points[0].Y >= viewModelGames.Find(x => x.IdSnake == User.IdSnake).Points.Y - 15 &&
-                        Snake.Points[0].Y <= viewModelGames.Find(x => x.IdSnake == User.IdSnake).Points.Y + 15)
-                    {
-                        viewModelGames.Find(x => x.IdSnake == User.IdSnake).Points = new Snakes.Point
-                            (
-                            new Random().Next(10, 783),
-                            new Random().Next(10, 419)
+                        var head = snake.Points[0];
+                        if (head.X <= 0 || head.X >= 793 || head.Y <= 0 || head.Y >= 420)
+                        {
+                            snake.GameOVer = true;
+                        }
+                        if (snake.direction != Snakes.Direction.Start)
+                        {
+                            for (int i = 1; i < snake.Points.Count; i++)
+                            {
+                                var p = snake.Points[i];
+                                if (Math.Abs(head.X - p.X) <= 1 && Math.Abs(head.Y - p.Y) <= 1)
+                                {
+                                    snake.GameOVer = true;
+                                    break;
+                                }
+                            }
+                        }
+                        var food = snakeGame.Points;
+                        if (!snake.GameOVer && Math.Abs(head.X - food.X) <= 15 && Math.Abs(head.Y - food.Y) <= 15)
+                        {
+                            snakeGame.Points = new Snakes.Point(
+                                new Random().Next(10, 783),
+                                new Random().Next(10, 419)
                             );
-                        Snake.Points.Add(new Snakes.Point()
-                        {
-                            X = Snake.Points[Snake.Points.Count - 1].X,
-                            Y = Snake.Points[Snake.Points.Count - 1].Y
-                        });
-                        LoadLeaders();
-                        Leaders.Add(new Leaders()
-                        {
-                            Name=User.Name,
-                            Points = Snake.Points.Count-3
-                        });
-                        Leaders = Leaders.OrderByDescending(x => x.Points).ThenBy(x => x.Name).ToList();
-                        viewModelGames.Find(x => x.IdSnake == User.IdSnake).Top = Leaders.FindIndex(x => x.Points == Snake.Points.Count - 3 && x.Name == User.Name) + 1;
+                            snake.Points.Add(new Snakes.Point { X = snake.Points[1].X, Y = snake.Points[1].Y });
+                            LoadLeaders();
+                            Leaders.Add(new Leaders { Name = user.Name, Points = snake.Points.Count - 3 });
+                            Leaders = Leaders.OrderByDescending(x => x.Points).ThenBy(x => x.Name).Take(100).ToList();
+                            SaveLeaders();
+                        }
                     }
+
+                    Send(); 
                 }
-                if (Snake.GameOVer)
+                catch (Exception ex)
                 {
-                    LoadLeaders();
-                    Leaders.Add(new Leaders()
-                    {
-                        Name = User.Name,
-                        Points = Snake.Points.Count - 3
-                    });
-                    SaveLeaders();
+                    Console.WriteLine($"Ошибка в таймере: {ex.Message}");
                 }
             }
-            Send();
         }
         public static void SaveLeaders()
         {

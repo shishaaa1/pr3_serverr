@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -29,27 +30,25 @@ namespace SnakeWPF.Pages
 
         private void StartGame(object sender, RoutedEventArgs e)
         {
-            if (MainWindow.mainWindow.receivingUdpClient != null)
-                MainWindow.mainWindow.receivingUdpClient.Close();
-            if (MainWindow.mainWindow.tRec != null)
-                MainWindow.mainWindow.tRec.Abort();
-            IPAddress UserIPAddress;
-            if (!IPAddress.TryParse(ip.Text, out UserIPAddress))
+            if (string.IsNullOrWhiteSpace(ip.Text) || string.IsNullOrWhiteSpace(name.Text))
             {
-                MessageBox.Show("Please use the IP address in the format X.X.X.X");
+                MessageBox.Show("Введите IP и имя!");
                 return;
             }
-            int UserPort;
-            if (!int.TryParse(port.Text, out UserPort))
-            {
-                MessageBox.Show("Please use the port as a numbers");
-                return;
-            }
+
+            MainWindow.mainWindow.ViewModelUserSettings.IPAddress = ip.Text.Trim();
+            MainWindow.mainWindow.ViewModelUserSettings.Name = name.Text.Trim();
+
+            // создаём сокет
+            MainWindow.mainWindow.InitReceiverSocket();
+
+            // запускаем поток
             MainWindow.mainWindow.StartReceiver();
-            MainWindow.mainWindow.ViewModelUserSettings.IPAddress = ip.Text;
-            MainWindow.mainWindow.ViewModelUserSettings.Port = port.Text;
-            MainWindow.mainWindow.ViewModelUserSettings.Name = name.Text;
-            MainWindow.Send("/start|" + JsonConvert.SerializeObject(MainWindow.mainWindow.ViewModelUserSettings));
+
+            // отправляем /start
+            MainWindow.Send("/start|" +
+                JsonConvert.SerializeObject(MainWindow.mainWindow.ViewModelUserSettings));
         }
+
     }
 }

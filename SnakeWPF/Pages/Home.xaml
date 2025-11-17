@@ -24,14 +24,7 @@
                     VerticalAlignment="Top"
                     Foreground="Black"
                     FontFamily="Forte"/>
-                <Label 
-                    Content="Port:"
-                    HorizontalAlignment="Left"
-                    Margin="202,37,0,0"
-                    VerticalAlignment="Top"
-                    Foreground="Black"
-                    Width="74"
-                    FontFamily="Forte"/>
+                
                 <Label 
                     Content="Your Name:"
                     HorizontalAlignment="Left"
@@ -49,17 +42,7 @@
                          VerticalContentAlignment="Center"
                          HorizontalContentAlignment="Center"
                          FontFamily="Forte"/>
-                <TextBox x:Name="port"
-                    HorizontalAlignment="Left"
-                    Height="25" 
-                    Margin="202,62,0,0"
-                    TextWrapping="Wrap"
-                    Text="6000"
-                    VerticalAlignment="Top"
-                    Width="74"
-                    VerticalContentAlignment="Center"
-                    HorizontalContentAlignment="Center"
-                    FontFamily="Forte"/>
+                
                 <TextBox x:Name="name"
                          HorizontalAlignment="Left"
                          Height="25"

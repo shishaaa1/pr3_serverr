@@ -10,6 +10,7 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
@@ -22,86 +23,144 @@ namespace SnakeWPF.Pages
     public partial class Game : Page
     {
         public int StepCadr = 0;
+        public List<SnakeData> AllSnakes { get; set; } = new List<SnakeData>();
         public Game()
         {
             InitializeComponent();
         }
-        public void CreateUI()
+        public void CreateUI(FullGameState state)
         {
+            // Защита от пустых данных
+            if (state?.GameState?.Snakes == null || state.GameState.Snakes.Count == 0)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    canvas.Children.Clear();
+                    TextBlock tb = new TextBlock
+                    {
+                        Text = "Ожидание игроков...\nили сервер не шлёт данные",
+                        Foreground = Brushes.Red,
+                        FontSize = 24,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    canvas.Children.Add(tb);
+                });
+                return;
+            }
+
             Dispatcher.Invoke(() =>
             {
-                if (StepCadr == 0) StepCadr = 1;
-                else StepCadr = 0;
                 canvas.Children.Clear();
-                for (int iPoint = MainWindow.mainWindow.ViewModelGames.SnakesPlayers.Points.Count - 1; iPoint >= 0; --iPoint)
+
+                int myId = MainWindow.mainWindow.ViewModelUserSettings.IdSnake;
+
+                // === РИСУЕМ ВСЕХ ЗМЕЕК ===
+                foreach (var snake in state.GameState.Snakes)
                 {
-                    Snakes.Point SnakePoint = MainWindow.mainWindow.ViewModelGames.SnakesPlayers.Points[iPoint];
-                    if (iPoint != 0)
+                    if (snake.Points == null || snake.Points.Count == 0) continue;
+
+                    bool isMine = snake.Id == myId;
+                    bool isDead = snake.GameOver;
+
+                    // Цвет тела
+                    Color bodyColor = ParseColor(snake.Color);
+                    Color headColor = isMine ? Colors.Orange : Colors.Gold;
+
+                    if (isDead)
                     {
-                        Snakes.Point NextSnakePoint = MainWindow.mainWindow.ViewModelGames.SnakesPlayers.Points[iPoint - 1];
-                        if (SnakePoint.X > NextSnakePoint.X || SnakePoint.X < NextSnakePoint.X)
-                        {
-                            if (iPoint % 2 == 0)
-                            {
-                                if (StepCadr % 2 == 0)
-                                    SnakePoint.Y -= 1;
-                                else
-                                    SnakePoint.Y += 1;
-                            }
-                            else
-                            {
-                                if (StepCadr % 2 == 0)
-                                    SnakePoint.Y += 1;
-                                else
-                                    SnakePoint.Y -= 1;
-                            }
-                        }
-                        else if (SnakePoint.Y > NextSnakePoint.Y || SnakePoint.Y < NextSnakePoint.Y)
-                        {
-                            if (iPoint % 2 == 0)
-                            {
-                                if (StepCadr % 2 == 0)
-                                    SnakePoint.Y -= 1;
-                                else
-                                    SnakePoint.Y += 1;
-                            }
-                            else
-                            {
-                                if (StepCadr % 2 == 0)
-                                    SnakePoint.Y += 1;
-                                else
-                                    SnakePoint.Y -= 1;
-                            }
-                        }
+                        bodyColor = Colors.Gray;
+                        headColor = Colors.DarkRed;
                     }
-                    Brush Color;
-                    if (iPoint == 0)
-                        Color = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 127, 14));
-                    else
-                        Color = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 198, 19));
-                    Ellipse ellipse = new Ellipse()
+
+                    // Рисуем сегменты с хвоста к голове
+                    for (int i = snake.Points.Count - 1; i >= 0; i--)
                     {
-                        Width = 20,
-                        Height = 20,
-                        Margin = new Thickness(SnakePoint.X - 10, SnakePoint.Y - 10, 0, 0),
-                        Fill = Color,
-                        Stroke = Brushes.Black,
-                    };
-                    canvas.Children.Add(ellipse);
+                        var p = snake.Points[i];
+
+                        Ellipse segment = new Ellipse
+                        {
+                            Width = 18,
+                            Height = 18,
+                            Fill = new SolidColorBrush(i == 0 ? headColor : bodyColor),
+                            Stroke = Brushes.Black,
+                            StrokeThickness = 1,
+                            Opacity = isDead ? 0.6 : 1.0,
+                            Margin = new Thickness(p.X - 9, p.Y - 9, 0, 0)
+                        };
+
+                        // Пульсация только у своей живой головы
+                        if (i == 0 && isMine && !isDead)
+                        {
+                            var scale = new ScaleTransform(1, 1);
+                            segment.RenderTransform = scale;
+                            segment.RenderTransformOrigin = new Point(0.5, 0.5);
+
+                            var pulse = new DoubleAnimation(1.0, 1.3, TimeSpan.FromSeconds(0.4))
+                            {
+                                AutoReverse = true,
+                                RepeatBehavior = RepeatBehavior.Forever
+                            };
+                            scale.BeginAnimation(ScaleTransform.ScaleXProperty, pulse);
+                            scale.BeginAnimation(ScaleTransform.ScaleYProperty, pulse);
+                        }
+
+                        canvas.Children.Add(segment);
+                    }
                 }
-                ImageBrush myBrush = new ImageBrush();
-                myBrush.ImageSource = new BitmapImage(new Uri($"pack://application:,,,/Image/Apple.png"));
-                Ellipse points = new Ellipse()
+
+                // === РИСУЕМ ЯБЛОКИ ===
+                if (state.GameState.Foods != null)
                 {
-                    Width = 40,
-                    Height = 40,
-                    Margin = new Thickness(
-                        MainWindow.mainWindow.ViewModelGames.Points.X - 20,
-                        MainWindow.mainWindow.ViewModelGames.Points.Y - 20, 0, 0),
-                    Fill = myBrush
-                };
-                canvas.Children.Add(points);
+                    foreach (var food in state.GameState.Foods)
+                    {
+                        if (food == null) continue;
+
+                        var appleBrush = new ImageBrush
+                        {
+                            ImageSource = new BitmapImage(new Uri("pack://application:,,,/Image/Apple.png"))
+                        };
+
+                        var apple = new Ellipse
+                        {
+                            Width = 36,
+                            Height = 36,
+                            Fill = appleBrush,
+                            Margin = new Thickness(food.X - 18, food.Y - 18, 0, 0)
+                        };
+
+                        // Вращение яблока
+                        var rotate = new RotateTransform(0);
+                        apple.RenderTransform = rotate;
+                        apple.RenderTransformOrigin = new Point(0.5, 0.5);
+
+                        var spin = new DoubleAnimation(0, 360, TimeSpan.FromSeconds(8))
+                        {
+                            RepeatBehavior = RepeatBehavior.Forever
+                        };
+                        rotate.BeginAnimation(RotateTransform.AngleProperty, spin);
+
+                        canvas.Children.Add(apple);
+                    }
+                }
             });
+        }
+        // Заменил switch-выражение на обычный switch (работает в C# 7.3)
+        private Color ParseColor(string colorName)
+        {
+            if (string.IsNullOrEmpty(colorName)) return Colors.Gray;
+
+            switch (colorName.ToLower())
+            {
+                case "red": return Colors.Red;
+                case "green": return Colors.LimeGreen;
+                case "blue": return Colors.DeepSkyBlue;
+                case "yellow": return Colors.Yellow;
+                case "purple": return Colors.MediumOrchid;
+                case "orange": return Colors.Orange;
+                case "pink": return Colors.HotPink;
+                default: return Colors.Gray;
+            }
         }
     }
 }

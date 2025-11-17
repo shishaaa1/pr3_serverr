@@ -12,10 +12,10 @@ namespace Common
         {
             public int X { get; set; }
             public int Y { get; set; }
-            public Point(int X, int Y)
+            public Point(int x, int y)
             {
-                this.X = X;
-                this.Y = Y;
+                X = x;
+                Y = y;
             }
             public Point() { }
         }

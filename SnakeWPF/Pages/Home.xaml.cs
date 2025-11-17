@@ -30,24 +30,27 @@ namespace SnakeWPF.Pages
 
         private void StartGame(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(ip.Text) || string.IsNullOrWhiteSpace(name.Text))
+            if (MainWindow.mainWindow.receivingUdpClient != null)
+                MainWindow.mainWindow.receivingUdpClient.Close();
+            if (MainWindow.mainWindow.tRec != null)
+                MainWindow.mainWindow.tRec.Abort();
+            IPAddress UserIPAddress;
+            if (!IPAddress.TryParse(ip.Text, out UserIPAddress))
             {
-                MessageBox.Show("Введите IP и имя!");
+                MessageBox.Show("Please use the IP address in the format X.X.X.X");
                 return;
             }
-
-            MainWindow.mainWindow.ViewModelUserSettings.IPAddress = ip.Text.Trim();
-            MainWindow.mainWindow.ViewModelUserSettings.Name = name.Text.Trim();
-
-            // создаём сокет
-            MainWindow.mainWindow.InitReceiverSocket();
-
-            // запускаем поток
+            int UserPort;
+            if (!int.TryParse(port.Text, out UserPort))
+            {
+                MessageBox.Show("Please use the port as a number");
+                return;
+            }
             MainWindow.mainWindow.StartReceiver();
-
-            // отправляем /start
-            MainWindow.Send("/start|" +
-                JsonConvert.SerializeObject(MainWindow.mainWindow.ViewModelUserSettings));
+            MainWindow.mainWindow.ViewModelUserSettings.IPAddress = ip.Text;
+            MainWindow.mainWindow.ViewModelUserSettings.Port = port.Text;
+            MainWindow.mainWindow.ViewModelUserSettings.Name = name.Text;
+            MainWindow.Send("/start|" + JsonConvert.SerializeObject(MainWindow.mainWindow.ViewModelUserSettings));
         }
 
     }

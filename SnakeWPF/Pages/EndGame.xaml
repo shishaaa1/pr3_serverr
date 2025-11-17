@@ -8,45 +8,14 @@
       d:DesignHeight="450" d:DesignWidth="800"
       Title="EndGame">
 
-    <Grid>
-        <Grid.Background>
-            <ImageBrush></ImageBrush>
-        </Grid.Background>
-        <Grid Width="320"
-              Height="200"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center">
-            <Grid.Background>
-                <ImageBrush></ImageBrush>
-            </Grid.Background>
-            <Label x:Name="name"
-                   Content="VD"
-                   Margin="45,18,45,0"
-                   VerticalAlignment="Top"
-                   HorizontalContentAlignment="Center"
-                   FontFamily="Forte"
-                   FontSize="16"/>
-            <Label
-                x:Name="glasses"
-                Content="90 glasses"
-                Margin="45,50,45,0"
-                VerticalAlignment="Top"
-                HorizontalContentAlignment="Center"
-                FontFamily="Forte"/>
-            <Button Click="OpenHome"
-                    Content="Main Menu"
-                    HorizontalAlignment="Left"
-                    Margin="45,0,0,10"
-                    VerticalAlignment="Bottom"
-                    Width="230"
-                    Height="25" FontFamily="Forte"/>
-            <Label x:Name="top"
-                   Content="999"
-                   Margin="45,76,45,0"
-                   VerticalAlignment="Top"
-                   HorizontalContentAlignment="Center"
-                   FontFamily="Forte"
-                   Height="84" VerticalContentAlignment="Center" FontSize="48"/>
+    <Grid Background="#50742c">
+        <Grid>
+            <Grid Width="320" Height="200" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#aad751">
+                <Label x:Name="name" Content="Player" Margin="45,18,45,0" VerticalAlignment="Top" HorizontalContentAlignment="Center" FontFamily="Forte" FontSize="16"/>
+                <Label x:Name="score" Content="Score 90" Margin="45,50,45,0" VerticalAlignment="Top" HorizontalContentAlignment="Center" FontFamily="Forte"/>
+                <Button Click="OpenHome" Content="Main menu" HorizontalAlignment="Left" Margin="45,0,0,10" VerticalAlignment="Bottom" Width="230" Height="25" FontFamily="Forte"/>
+                <Label x:Name="top" Content="999" Margin="45,76,45,0" VerticalAlignment="Top" HorizontalContentAlignment="Center" FontFamily="Forte" Height=" 84" VerticalContentAlignment="Center" FontSize="48"/>
+            </Grid>
         </Grid>
     </Grid>
 </Page>

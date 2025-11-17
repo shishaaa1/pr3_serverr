@@ -41,11 +41,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FullGameState.cs" />
     <Compile Include="GameStateData.cs" />
     <Compile Include="Leaders.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SnakeData.cs" />
     <Compile Include="Snakes.cs" />
     <Compile Include="ViewModelGames.cs" />
     <Compile Include="ViewModelUserSettings.cs" />

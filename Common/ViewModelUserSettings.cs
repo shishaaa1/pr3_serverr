@@ -9,10 +9,9 @@ namespace Common
     public class ViewModelUserSettings
     {
         public string IPAddress { get; set; }
-        public string Port { get; set; } = "0";
+        public string Port { get; set; }
         public string Name { get; set; }
-        public int IdSnake = -1;
-        public string Color { get; set; }
+        public int IdSnake = 1;
 
     }
 }

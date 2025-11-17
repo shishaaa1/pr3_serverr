@@ -17,7 +17,7 @@ namespace pr3_serverr
         public static List<Leaders> Leaders = new List<Leaders>();
         public static List<ViewModelUserSettings> remoteIPAddress = new List<ViewModelUserSettings>();
         public static List<ViewModelGames> viewModelGames = new List<ViewModelGames>();
-        private static int localPort = 6000;
+        private static int localPort = 5001;
         public static int MaxSpeed = 15;
         static void Main(string[] args)
         {
@@ -28,11 +28,74 @@ namespace pr3_serverr
                 Thread tTime = new Thread(Timer);
                 tTime.Start();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Возникло исключение: " + ex.ToString() + "\n " + ex.Message);
+                Console.WriteLine("Возникло исключение: " + ex.ToString() + "\n" + ex.Message);
             }
+        }
+
+        private static void Send()
+        {
+            foreach (ViewModelUserSettings User in remoteIPAddress)
+            {
+                UdpClient sender = new UdpClient();
+                IPEndPoint endPoint = new IPEndPoint(
+                    IPAddress.Parse(User.IPAddress),
+                    int.Parse(User.Port));
+                try
+                {
+                    var playerData = viewModelGames.Find(x => x.IdSnake == User.IdSnake);
+                    var otherPlayersData = viewModelGames.FindAll(x => x.IdSnake != User.IdSnake);
+                    var gameData = new GameData
+                    {
+                        PlayerData = playerData,
+                        OtherPlayersData = otherPlayersData
+                    };
+
+                    byte[] gameDataBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(gameData));
+                    sender.Send(gameDataBytes, gameDataBytes.Length, endPoint);
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"Отправил данные игроку {User.IPAddress}:{User.Port}");
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Возникло исключение" + ex.ToString() + "\n" + ex.Message);
+                }
+                finally
+                {
+                    sender.Close();
+                }
+            }
+        }
+        public static void LoadLeaders()
+        {
+            if (File.Exists("./leaders.txt"))
+            {
+                StreamReader SR = new StreamReader("./leaders.txt");
+                string json = SR.ReadLine();
+                SR.Close();
+                if (!string.IsNullOrEmpty(json))
+                {
+                    Leaders = JsonConvert.DeserializeObject<List<Leaders>>(json);
+                }
+                else
+                {
+                    Leaders = new List<Leaders>();
+                }
+            }
+            else
+            {
+                Leaders = new List<Leaders> { };
+            }
+        }
+        public static void SaveLeaders()
+        {
+            string json = JsonConvert.SerializeObject(Leaders);
+            StreamWriter SW = new StreamWriter("./leaders.txt");
+            SW.WriteLine(json);
+            SW.Close();
         }
         public static int AddSnake()
         {
@@ -40,71 +103,116 @@ namespace pr3_serverr
             viewModelGamesPlayer.SnakesPlayers = new Snakes()
             {
                 Points = new List<Snakes.Point>()
-        {
-            new Snakes.Point() {X=30,Y=10 },
-            new Snakes.Point() {X=20,Y=10 },
-            new Snakes.Point() {X=10,Y=10 },
-        },
+                {
+                    new Snakes.Point() {X = 30, Y = 10 },
+                    new Snakes.Point() {X = 20, Y = 10 },
+                    new Snakes.Point() {X = 10, Y = 10 },
+                },
                 direction = Snakes.Direction.Start
             };
             viewModelGamesPlayer.Points = new Snakes.Point(new Random().Next(10, 783), new Random().Next(10, 410));
             viewModelGames.Add(viewModelGamesPlayer);
-
-            int index = viewModelGames.Count - 1;
-            viewModelGames[index].IdSnake = index;
-            return index;
+            return viewModelGames.FindIndex(x => x == viewModelGamesPlayer);
         }
-        private static void Send()
+        public static void Timer()
         {
-            foreach (var user in remoteIPAddress)
+            while (true)
             {
-                try
+                Thread.Sleep(100);
+                List<ViewModelGames> RemoteSnakes = viewModelGames.FindAll(x => x.SnakesPlayers.GameOver);
+                if (RemoteSnakes.Count > 0)
                 {
-                    var fullState = new FullGameState
+                    foreach (var DeadSnakes in RemoteSnakes)
                     {
-                        PlayerId = user.IdSnake,
-                        GameState = new GameStateData
-                        {
-                            Snakes = viewModelGames.Select(v => new SnakeData
-                            {
-                                Id = v.IdSnake,
-                                Points = v.SnakesPlayers.Points,
-                                Direction = v.SnakesPlayers.direction,
-                                GameOver = v.SnakesPlayers.GameOver,
-                                Color = remoteIPAddress.FirstOrDefault(u => u.IdSnake == v.IdSnake)?.Color ?? "Red"
-                            }).ToList(),
-                            Foods = viewModelGames.Select(v => v.Points).ToList(),
-                            Leaders = Leaders.Take(10).ToList()
-                        }
-                    };
-
-                    string json = JsonConvert.SerializeObject(fullState);
-                    byte[] data = Encoding.UTF8.GetBytes(json);
-
-                    using (var client = new UdpClient())
-                    {
-                        var ep = new IPEndPoint(IPAddress.Parse(user.IPAddress), int.Parse(user.Port));
-                        client.Send(data, data.Length, ep);
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"Отключил пользователя: {remoteIPAddress.Find(x => x.IdSnake == DeadSnakes.IdSnake).IPAddress}:" +
+                            $"{remoteIPAddress.Find(x => x.IdSnake == DeadSnakes.IdSnake).Port}");
+                        remoteIPAddress.RemoveAll(x => x.IdSnake == DeadSnakes.IdSnake);
                     }
-
-                    Console.WriteLine($"Отправлено игроку {user.IPAddress}:{user.Port} (ID {user.IdSnake})");
+                    viewModelGames.RemoveAll(x => x.SnakesPlayers.GameOver);
                 }
-                catch (Exception ex)
+                foreach (var User in remoteIPAddress)
                 {
-                    Console.WriteLine("Ошибка отправки: " + ex.Message);
+                    var Snake = viewModelGames.Find(x => x.IdSnake == User.IdSnake).SnakesPlayers;
+                    for (int i = Snake.Points.Count - 1; i >= 0; i--)
+                    {
+                        if (i != 0)
+                        {
+                            Snake.Points[i] = Snake.Points[i - 1];
+                        }
+                        else
+                        {
+                            int Speed = 10 + (int)Math.Round(Snake.Points.Count / 20f);
+                            if (Speed > MaxSpeed) Speed = MaxSpeed;
+                            if (Snake.direction == Snakes.Direction.Right) Snake.Points[i] = new Snakes.Point() { X = Snake.Points[i].X + Speed, Y = Snake.Points[i].Y };
+                            if (Snake.direction == Snakes.Direction.Left) Snake.Points[i] = new Snakes.Point() { X = Snake.Points[i].X - Speed, Y = Snake.Points[i].Y };
+                            if (Snake.direction == Snakes.Direction.Down) Snake.Points[i] = new Snakes.Point() { X = Snake.Points[i].X, Y = Snake.Points[i].Y + Speed };
+                            if (Snake.direction == Snakes.Direction.Up) Snake.Points[i] = new Snakes.Point() { X = Snake.Points[i].X, Y = Snake.Points[i].Y - Speed };
+                        }
+                    }
+                    if (Snake.Points[0].X <= 0 || Snake.Points[0].X >= 793) Snake.GameOver = true;
+                    if (Snake.Points[0].Y <= 0 || Snake.Points[0].Y >= 723) Snake.GameOver = true;
+                    if (Snake.direction != Snakes.Direction.Start)
+                    {
+                        for (int i = 1; i < Snake.Points.Count; i++)
+                        {
+                            if (Snake.Points[0].X >= Snake.Points[i].X - 1 && Snake.Points[0].X <= Snake.Points[i].X + 1)
+                            {
+                                if (Snake.Points[0].Y >= Snake.Points[i].Y - 1 && Snake.Points[0].Y <= Snake.Points[i].Y + 1)
+                                {
+                                    Snake.GameOver = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (Snake.Points[0].X >= viewModelGames.Find(x => x.IdSnake == User.IdSnake).Points.X - 15 &&
+                        Snake.Points[0].X <= viewModelGames.Find(x => x.IdSnake == User.IdSnake).Points.X + 15)
+                    {
+                        if (Snake.Points[0].Y >= viewModelGames.Find(x => x.IdSnake == User.IdSnake).Points.Y - 15 &&
+                            Snake.Points[0].Y <= viewModelGames.Find(x => x.IdSnake == User.IdSnake).Points.Y + 15)
+                        {
+                            viewModelGames.Find(x => x.IdSnake == User.IdSnake).Points = new Snakes.Point(new Random().Next(10, 783), new Random().Next(10, 410));
+                            Snake.Points.Add(new Snakes.Point()
+                            {
+                                X = Snake.Points[Snake.Points.Count - 1].X,
+                                Y = Snake.Points[Snake.Points.Count - 1].Y
+                            });
+                            LoadLeaders();
+                            Leaders.Add(new Leaders()
+                            {
+                                Name = User.Name,
+                                Points = Snake.Points.Count - 3
+                            });
+                            Leaders = Leaders.OrderByDescending(x => x.Points).ThenBy(x => x.Name).ToList();
+                            viewModelGames.Find(x => x.IdSnake == User.IdSnake).Top = Leaders.FindIndex(x => x.Points == Snake.Points.Count - 3 && x.Name == User.Name) + 1;
+                        }
+                    }
+                    if (Snake.GameOver)
+                    {
+                        LoadLeaders();
+                        Leaders.Add(new Leaders()
+                        {
+                            Name = User.Name,
+                            Points = Snake.Points.Count - 3
+                        });
+                        SaveLeaders();
+                    }
                 }
+                Send();
             }
         }
         public static void Receiver()
         {
-            UdpClient receivingUpdClient = new UdpClient(localPort);
+            UdpClient receivingUdpClient = new UdpClient(localPort);
             IPEndPoint RemoteIpEndPoint = null;
             try
             {
-                Console.WriteLine("Команды сервера: ");
+                Console.WriteLine("Команды сервера:");
                 while (true)
                 {
-                    byte[] receiveBytes = receivingUpdClient.Receive(ref RemoteIpEndPoint);
+                    byte[] receiveBytes = receivingUdpClient.Receive(
+                        ref RemoteIpEndPoint);
                     string returnData = Encoding.UTF8.GetString(receiveBytes);
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("Получил команду: " + returnData.ToString());
@@ -112,27 +220,23 @@ namespace pr3_serverr
                     {
                         string[] dataMessage = returnData.ToString().Split('|');
                         ViewModelUserSettings viewModelUserSettings = JsonConvert.DeserializeObject<ViewModelUserSettings>(dataMessage[1]);
-
-                        if (string.IsNullOrEmpty(viewModelUserSettings.Color))
-                            viewModelUserSettings.Color = GetRandomColor();
-
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"Подключился пользователь: {viewModelUserSettings.IPAddress}:{viewModelUserSettings.Port}");
                         remoteIPAddress.Add(viewModelUserSettings);
                         viewModelUserSettings.IdSnake = AddSnake();
                         viewModelGames[viewModelUserSettings.IdSnake].IdSnake = viewModelUserSettings.IdSnake;
-                        Send();
-
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"Подключился игрок {viewModelUserSettings.Name} (ID {viewModelUserSettings.IdSnake})");
                     }
                     else
                     {
                         string[] dataMessage = returnData.ToString().Split('|');
                         ViewModelUserSettings viewModelUserSettings = JsonConvert.DeserializeObject<ViewModelUserSettings>(dataMessage[1]);
                         int IdPlayer = -1;
-                        IdPlayer = remoteIPAddress.FindIndex(x => x.IPAddress == viewModelUserSettings.IPAddress && x.Port == viewModelUserSettings.Port);
+                        IdPlayer = remoteIPAddress.FindIndex(x => x.IPAddress == viewModelUserSettings.IPAddress
+                            && x.Port == viewModelUserSettings.Port);
                         if (IdPlayer != -1)
                         {
-                            if (dataMessage[0] == "Up" && viewModelGames[IdPlayer].SnakesPlayers.direction != Snakes.Direction.Down)
+                            if (dataMessage[0] == "Up" &&
+                                viewModelGames[IdPlayer].SnakesPlayers.direction != Snakes.Direction.Down)
                                 viewModelGames[IdPlayer].SnakesPlayers.direction = Snakes.Direction.Up;
                             else if (dataMessage[0] == "Down" &&
                                 viewModelGames[IdPlayer].SnakesPlayers.direction != Snakes.Direction.Up)
@@ -147,126 +251,11 @@ namespace pr3_serverr
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Возникло исключение: " + ex.ToString() + "\n "+ ex.Message);
+                Console.WriteLine("Возникло исключение: " + ex.ToString() + "\n" + ex.Message);
             }
-        }
-        public static void Timer()
-        {
-            while (true)
-            {
-                try
-                {
-                    Thread.Sleep(100); // ~10 FPS
-
-                    // Удаление мёртвых змей
-                    var deadSnakes = viewModelGames.Where(x => x.SnakesPlayers.GameOver).ToList();
-                    foreach (var dead in deadSnakes)
-                    {
-                        var user = remoteIPAddress.FirstOrDefault(u => u.IdSnake == dead.IdSnake);
-                        if (user != null)
-                        {
-                            Console.WriteLine($"Отключён игрок: {user.IPAddress}:{user.Port}");
-                            remoteIPAddress.Remove(user);
-                        }
-                        viewModelGames.Remove(dead);
-                    }
-
-                    foreach (var user in remoteIPAddress.ToList())
-                    {
-                        var snakeGame = viewModelGames.FirstOrDefault(g => g.IdSnake == user.IdSnake);
-                        if (snakeGame == null) continue;
-
-                        var snake = snakeGame.SnakesPlayers;
-                        if (snake.GameOver) continue;
-
-                        for (int i = snake.Points.Count - 1; i >= 0; i--)
-                        {
-                            if (i != 0)
-                            {
-                                snake.Points[i] = snake.Points[i - 1];
-                            }
-                            else
-                            {
-                                int speed = Math.Min(10 + (int)Math.Round(snake.Points.Count / 20f), MaxSpeed);
-                                var currenthead = snake.Points[0];
-                                switch (snake.direction)
-                                {
-                                    case Snakes.Direction.Right: currenthead.X += speed; break;
-                                    case Snakes.Direction.Left: currenthead.X -= speed; break;
-                                    case Snakes.Direction.Down: currenthead.Y += speed; break;
-                                    case Snakes.Direction.Up: currenthead.Y -= speed; break;
-                                    case Snakes.Direction.Start: break;
-                                }
-                                snake.Points[0] = currenthead;
-                            }
-                        }
-                        var head = snake.Points[0];
-                        if (head.X <= 0 || head.X >= 793 || head.Y <= 0 || head.Y >= 420)
-                        {
-                            snake.GameOver = true;
-                        }
-                        if (snake.direction != Snakes.Direction.Start)
-                        {
-                            for (int i = 1; i < snake.Points.Count; i++)
-                            {
-                                var p = snake.Points[i];
-                                if (Math.Abs(head.X - p.X) <= 1 && Math.Abs(head.Y - p.Y) <= 1)
-                                {
-                                    snake.GameOver = true;
-                                    break;
-                                }
-                            }
-                        }
-                        var food = snakeGame.Points;
-                        if (!snake.GameOver && Math.Abs(head.X - food.X) <= 15 && Math.Abs(head.Y - food.Y) <= 15)
-                        {
-                            snakeGame.Points = new Snakes.Point(
-                                new Random().Next(10, 783),
-                                new Random().Next(10, 419)
-                            );
-                            snake.Points.Add(new Snakes.Point { X = snake.Points[1].X, Y = snake.Points[1].Y });
-                            LoadLeaders();
-                            Leaders.Add(new Leaders { Name = user.Name, Points = snake.Points.Count - 3 });
-                            Leaders = Leaders.OrderByDescending(x => x.Points).ThenBy(x => x.Name).Take(100).ToList();
-                            SaveLeaders();
-                        }
-                    }
-
-                    Send(); 
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Ошибка в таймере: {ex.Message}");
-                }
-            }
-        }
-        public static void SaveLeaders()
-        {
-            string json = JsonConvert.SerializeObject(Leaders);
-            StreamWriter SW = new StreamWriter("./leaders.txt");
-            SW.WriteLine(json);
-            SW.Close();
-        }
-        public static void LoadLeaders()
-        {
-            if (File.Exists("./leaders.txt"))
-            {
-                StreamReader SR = new StreamReader("./leaders.txt");
-                string json = SR.ReadLine();
-                SR.Close();
-                if (!string.IsNullOrEmpty(json))
-                    Leaders = JsonConvert.DeserializeObject<List<Leaders>>(json);
-                else
-                    Leaders = new List<Leaders>();
-            }
-        }
-        private static string GetRandomColor()
-        {
-            var colors = new[] { "Red", "Green", "Blue", "Yellow", "Purple", "Orange", "Pink" };
-            return colors[new Random().Next(colors.Length)];
         }
     }
 }

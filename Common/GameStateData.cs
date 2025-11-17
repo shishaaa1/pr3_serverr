@@ -6,10 +6,9 @@ using System.Threading.Tasks;
 
 namespace Common
 {
-    public class GameStateData
+    public class GameData
     {
-        public List<SnakeData> Snakes { get; set; }
-        public List<Snakes.Point> Foods { get; set; }
-        public List<Leaders> Leaders { get; set; }
+        public ViewModelGames PlayerData { get; set; }
+        public List<ViewModelGames> OtherPlayersData { get; set; }
     }
 }
